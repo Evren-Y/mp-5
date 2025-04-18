@@ -1,28 +1,29 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, Db, Collection } from "mongodb";
 
-const uri = process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URI as string;
 if (!uri) {
   throw new Error("Please define the MONGODB_URI environment variable in .env.local");
 }
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+const DB_NAME = "cs391-url-shortener";
+export const URL_COLLECTION = "urls-collection";
 
-declare global {
-  var _mongoClientPromise: Promise<MongoClient> | undefined;
-}
+let client: MongoClient | null = null;
+let db: Db | null = null;
 
-if (process.env.NODE_ENV === "development") {
-  if (!global._mongoClientPromise) {
+async function connect(): Promise<Db> {
+  if(!client) {
     client = new MongoClient(uri);
-    global._mongoClientPromise = client.connect();
+    await client.connect();
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  client = new MongoClient(uri);
-  clientPromise = client.connect();
+  return client.db(DB_NAME);
 }
 
-export async function getClient(): Promise<MongoClient> {
-  return clientPromise;
+export default async function getCollection(
+  collectionName: string,
+): Promise<Collection> {
+  if (!db) {
+    db = await connect();
+  }
+  return db.collection(collectionName);
 }
